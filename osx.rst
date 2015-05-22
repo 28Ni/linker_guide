@@ -1,71 +1,54 @@
 OSX
 ================
 
-install name and dependant install name
+install name 
 ----------------------------------------
 
-During the loading of shared libraries, two important concepts are involved:
+When creating a library `libdep.dylib`, the **install name** of the library is
+embedded in binary file `libdep.dylib`.
 
-   - install name,
-   - dependant install name.
+When linking an executable `main` (or a library `libmain.dylib`) with a
+library `libdep.dylib` it depends on, the **install name** of `libdep.dylib`
+is copied in the executable `main` (or library `libmain.dylib`).
 
-**install name** are used at **link time**, and **dependant install name** are
-used at **load time**.
+When loading an executable `main` (or a library `libmain.dylib`), the
+dependent library `libdep.dylib` is searched accoring to the **install name**
+embbedded in `main` (or `libmain.dylib`).
 
-Simillary, **install name** are not used at **load time**, and **dependant
-install name** are not used at **link time**.
+**install name** are used **only** at **link time**, while **install name** of
+dependant libraries are used **only** at **load time**.
 
-- When a shared library is created, the **install name** of the library is
-  written in the header of the library.
-
-- When linking an executable `MAIN` (or a shared library `MAIN`) with a shared
-  library `DEP`, the **install name** of `DEP` is copied into the header of the
-  executable `MAIN`, and become the **dependant install name** in `MAIN` of the dependant
-  shared library `DEP` (`-L/path/to/lib/dir` to find the shared library `DEP` at
-  link time)
-
-- When the executable `MAIN` is executed, the dependent shared library `DEP` is
-  searched accoring to the **dependent install name** in `MAIN`
-
-The **install name** in both library `DEP` or executable `MAIN` can be changed
-after their creation, see the section **usefull commands** bellow.
-
-The problem with absolute paths
+Install name with absolute paths
 ----------------------------------------
 
-Why no just set the **install name** of a library to its absolute path when creating it?
-Consider the typical `./configure ; make ; make install` process:
+The simple case in when install name of a dependant library is an absolute
+path, for example:
 
+.. code-block:: bash
 
-- During the `make`:
-    - library would be created with **install name**
-      `/tmp/build/lib/libfoo.dylib`
-    - executable is linked with library, and **install name** in executable would
-      be `/tmp/build/lib/libfoo.dylib`
+    # install name          : /somewhere/lib/libfoo.dylib
+    /somewhere/lib/libfoo.dylib
 
-- During the `make install`:
-    - library and executable are move to `/usr/local/lib` and `/usr/local/bin`.
+    # Success:
+    # dependant install name: /somewhere/lib/libfoo.dylib
+    /somewhere/bin/xfoo
 
-Now, when executable is executed, it would search library in
-`/tmp/build/lib/libfoo.dylib`, and  would not find it.
+If the library in moved to another path, load the executable fails.
 
-Moreover, creating new libraries that links to `/tmp/build/lib/libfoo.dylib`
-would inherit the wrong **install name** `/tmp/build/lib/libfoo.dylib`, and
-fails to be executed too.
+.. code-block:: bash
 
-A solution is to update all **dependant install name** and **install name** (using
-`install_name_tool` after the `make install`), which works.
+    # install name          : /somewhere/lib/libfoo.dylib
+    /anotherplace/lib/libfoo.dylib
 
-However, if libraries and executable are moved again (for example, installing it in
-a conda environment), all absolute paths must be updated again.
+    # Failure:
+    # dependant install name: /somewhere/lib/libfoo.dylib
+    /somewhere/bin/xfoo
 
-Using relative path is a more general approch which avoid having to update
-**install name** and **dependant install name**.
+The solution is to update the dependant name in `libfoo.dylib` (for futur
+link), and the install name of the dependant library in `xfoo`.
 
-Using relative paths
+Install name with relative paths
 ----------------------------------------
-
-Using relative paths for **dependant install name** and **install name** allows **relocation**.
 
 Consider the following directories and files:
 
@@ -77,8 +60,8 @@ Consider the following directories and files:
     # dependant install name: ../lib/libfoo.dylib
     /somewhere/bin/xfoo
 
-Where invoking `xfoo`, `libfoo.dylib` would be searched in
-`../lib/libfoo.dylib`, but relatively to where `xfoo` is invoked from:
+When invoking `xfoo`, `libfoo.dylib` is searched in `../lib/libfoo.dylib`, but
+relatively to where `xfoo` is invoked from:
 
 .. code-block:: bash
 
@@ -88,18 +71,31 @@ Where invoking `xfoo`, `libfoo.dylib` would be searched in
 
     # Failure: libfoo.dylib searched in /anotherplace/../lib/libfoo.dylib
     cd /anotherplace
+    ./xfoo
 
-Special variables
+
+Install name with @executable_path
 ----------------------------------------
 
-OSX provides several options to fix this:
+If **install name** starts with `@executable_path`,  `@executable_path` is
+replace at **load time** with absolute path of the executable, independently
+of where it is invoked from.
 
-@executable_path
-^^^^^^^^^^^^^^^^
+.. code-block:: bash
 
-Setting the **install name** to `@executable_path/../lib` will always replace
-`@executable_path` with absolute path of the executable, independently of where
-it is invoked from.
+    # install name              : @executable_path/../lib/libfoo.dylib
+    /somewhere/foo/lib/libfoo.dylib
+
+    # dependant install name    : @executable_path/../lib/libfoo.dylib
+    /somewhere/foo/bin/xfoo
+
+    # Success.
+    cd /anotherplace
+    ./xfoo
+
+The `foo` directory can be moved to `elsewhere`, loading `xfoo` will still
+find `libfoo.dylib`.
+
 
 @loader_path
 ^^^^^^^^^^^^^^^^
@@ -110,11 +106,9 @@ library `MAIN` is loaded and searches for a dependant shared library `DEP`.
 @rpath
 ^^^^^^^^^^^^^^^^
 
-**@rpath** in the **install name** can be replace by whatever value we want at link time to create
-the **dependant install name**.
-
-First @rpath example
-""""""""""""""""""""""
+If in `main`, **install name** of the dependent library is
+**@rpath/path/to/libdep.dylib**, when loading `main`, `path/to/libdep.dylib`
+is searched in a list of `rpath` embedded `main`.
 
 A library is installed somewhere, user want to create `yfoo`, which links with
 `libfoo.dylib`.  Using **@loader** path in **install name** and **dependant
@@ -122,98 +116,52 @@ intall name** `yfoo` fails:
 
 .. code-block:: bash
 
-    # install name          : @loader_path/../lib/libfoo.dylib
-    /somewhere/lib/libfoo.dylib
-
-    # Success:
-    # dependant install name: @loader_path/../lib/libfoo.dylib
-    /somewhere/bin/xfoo
-
-    # Failure:
-    # dependant install name: @loader_path/../lib/libfoo.dylib
-    # library is search in /home/user/bin/../lib/libfoo.dylib
-    /home/user/bin/yfoo
-
-Using **@rpath** in **install name** allows to define at link time whaever
-value we want for **@rpath** in the **dependant install name**. This can be
-`@loadpath/../lib` if the executable is relative to the library, or an absolute
-path otherwise:
-
-.. code-block:: bash
-
     # install name          : @rpath/libfoo.dylib
     /somewhere/lib/libfoo.dylib
 
-    # dependant install name: @loader_path/../libfoo.dylib
-    # Linker flag used: -Wl,-rpath=@loader_path/..
+    # Success:
+    # dependant install name: @rpath/libfoo.dylib
+    # rpath: ['@loader_path/../lib']
     /somewhere/bin/xfoo
 
-    # dependant install name: /somewhere/lib//libfoo.dylib
-    # Linker flag used: -Wl,-rpath=/somewhere/lib/
-    /home/user/bin/yfoo
+    # Success:
+    # dependant install name: @rpath/libfoo.dylib
+    # rpath: ['/somewhere/lib/']
+    /home/user/yfoo
 
+    # Failure, rpath is ignore at @rpath is not in dependant install name
+    # dependant install name: libfoo.dylib
+    # rpath: ['/somewhere/lib/']
+    /home/user/yfoo
 
-Second @rpath example
-""""""""""""""""""""""
-
-Two different version of `libfoo.dylib` is instelled in different directories,
-and they use @rpath in their **install name**:
-
-.. code-block:: bash
- 
-     # install name is @rpath/libfoo.dylib
-     /somewhere/lib/libfoo.dylib
-
-     # install name is @rpath/libfoo.dylib
-     /anotherplace/lib/libfoo.dylib
-
-     # Success:
-     # dependant install name is /somewhere/lib/libfoo.dylib
-     # Linker flag used: -Wl,-rpath=/somewhere/lib/
-     /home/user/bin/xfoo
-
-     # or
-
-     # Success:
-     # dependant install name is /antherplace/lib/libfoo.dylib
-     # Linker flag used: -Wl,-rpath=/anotherplace/lib/
-     /home/user/bin/xfoo
-
-Using LC_RPATH
-----------------------------------------
-
-One or more **LC_RPATH** can be enccoded in a library/executable, to search
-dependant libraries for.
-
-.. code-block:: bash
-
-     # install name is libfoo.dylib
-     /somewhere/lib/libfoo.dylib
-
-     # Success:
-     # dependant install name is libfoo.dylib
-     # LC_RPATH is /somewhere/lib
-     /home/user/bin/xfoo
-
-See **Usefull commands** to add **LC_RPATH** to libraries or executables. 
 
 Usefull commands
 ------------------------
 
+Linking with a library:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`-L` is used to search a library at **link time only**.
+
+.. code-block:: bash
+
+    clang++ -o <library or executable> -L/path/to/lib/dir -l<name> <sources>
+
 install name
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 
+Setting the **install name** of a libary at its creation (by default, it is
+`lib<name>.dylib`:
+
+.. code-block:: bash
+ 
+     clang++ -shared -install_name <install name> -o lib<name>.dylib <sources>
 
 Print **install name** of a shared library:
  
 .. code-block:: bash
 
      otool -D <library>
- 
-Setting the **install name** of a libary at its creation:
-
-.. code-block:: bash
- 
-     clang <sources> -dynamiclib -install_name <install name> -o lib<name>.dylib
 
 Change the **install name** of a library:
  
@@ -237,8 +185,14 @@ Change **dependant install name** of a dependent library:
 
      install_name_tool -change old/path/libdep.so new/path/libdep.so libmain.dylib
 
-LC_RPATH
+rpath
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set the rpath list a executable or library creation:
+
+.. code-block:: bash
+
+    clang++ -o <executable or library> -Wl,-rpath,<path0>, -Wl,-rpath<path1> ... <sources
 
 Print the **LC_RPATH**:
  
@@ -270,9 +224,6 @@ Notes
 Note that environment variable can shortcuts the use of the **install name** of
 the dependent shared library, typically using `DYLD_LIBRARY_PATH`.
 
-When linking a executable the a shared library, there seems to be no
-`clang`/`dyld` options to specify a dependent shared library **install name**
+When linking a executable with a shared library, there seems to be no
+`clang++`/`dyld` options to specify a dependent shared library **install name**
 different that the one in the shared library linked.
-
-**LC_RPATH** and **@rpath**  are to different way to search for library. If a **dependent install
-name** start with **@rpath** is not replaced at load time with the value of **LC_RPATH**.
