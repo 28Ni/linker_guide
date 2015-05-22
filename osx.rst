@@ -199,13 +199,9 @@ See **Usefull commands** to add **LC_RPATH** to libraries or executables.
 
 Usefull commands
 ------------------------
- 
-Setting the **install name** of a libary at its creation:
 
-.. code-block:: bash
- 
-     clang <sources> -dynamiclib -install_name <install name> -o lib<name>.dylib
- 
+install name
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Print **install name** of a shared library:
  
@@ -213,32 +209,42 @@ Print **install name** of a shared library:
 
      otool -D <library>
  
-
-Lists dependent dynamics libraries and its **dependant install name**:
+Setting the **install name** of a libary at its creation:
 
 .. code-block:: bash
  
-     otool -L <excutable or library>
- 
-
-Show the **rpath**:
- 
-.. code-block:: bash
-
-     otool -l <executable or library> # look at the section LC_RPATH
- 
+     clang <sources> -dynamiclib -install_name <install name> -o lib<name>.dylib
 
 Change the **install name** of a library:
  
 .. code-block:: bash
 
      install_name_tool -id /new/install/name /path/to/lib<name>.dylib
+
+dependant install name
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 
+Print dependent dynamics libraries and its **dependant install name**:
+
+.. code-block:: bash
+ 
+     otool -L <excutable or library>
+ 
  
 Change **dependant install name** of a dependent library:
  
 .. code-block:: bash
 
      install_name_tool -change old/path/libdep.so new/path/libdep.so libmain.dylib
+
+LC_RPATH
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Print the **LC_RPATH**:
+ 
+.. code-block:: bash
+
+     otool -l <executable or library> # look at the section LC_RPATH
 
 Add **LC_RPATH** to executable or library:
 
@@ -258,6 +264,8 @@ Modifiy **LC_RPATH** of executable or library:
 
     install_name_tool -rpath /some/path <executable or library>
  
+Notes
+------------------------
 
 Note that environment variable can shortcuts the use of the **install name** of
 the dependent shared library, typically using `DYLD_LIBRARY_PATH`.
