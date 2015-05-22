@@ -110,8 +110,8 @@ library `MAIN` is loaded and searches for a dependant shared library `DEP`.
 @rpath
 ^^^^^^^^^^^^^^^^
 
-`@rpath` allow to give to the executable whatever path we want to search
-library in.
+**@rpath** in the **install name** can be replace by whatever value we want at link time to create
+the **dependant install name**.
 
 First @rpath example
 """"""""""""""""""""""
@@ -179,6 +179,23 @@ and they use @rpath in their **install name**:
      # Linker flag used: -Wl,-rpath=/anotherplace/lib/
      /home/user/bin/xfoo
 
+Using LC_RPATH
+----------------------------------------
+
+One or more **LC_RPATH** can be enccoded in a library/executable, to search
+dependant libraries for.
+
+.. code-block:: bash
+
+     # install name is libfoo.dylib
+     /somewhere/lib/libfoo.dylib
+
+     # Success:
+     # dependant install name is libfoo.dylib
+     # LC_RPATH is /somewhere/lib
+     /home/user/bin/xfoo
+
+See **Usefull commands** to add **LC_RPATH** to libraries or executables. 
 
 Usefull commands
 ------------------------
@@ -222,13 +239,32 @@ Change **dependant install name** of a dependent library:
 .. code-block:: bash
 
      install_name_tool -change old/path/libdep.so new/path/libdep.so libmain.dylib
- 
-`install_name_tool` also has options to modify or add or delete **rpath** in a
-executable or shared library.
 
-Note that environment variable can shortcuts the use of the **install name** of the dependent
-shared library, typically using `DYLD_LIBRARY_PATH`.
+Add **LC_RPATH** to executable or library:
+
+.. code-block:: bash
+
+    install_name_tool -add_rpath /some/path <executable or library>
+
+Delete **LC_RPATH** of executable or library:
+
+.. code-block:: bash
+
+    install_name_tool -delete_rpath /some/path <executable or library>
+
+Modifiy **LC_RPATH** of executable or library:
+
+.. code-block:: bash
+
+    install_name_tool -rpath /some/path <executable or library>
+ 
+
+Note that environment variable can shortcuts the use of the **install name** of
+the dependent shared library, typically using `DYLD_LIBRARY_PATH`.
 
 When linking a executable the a shared library, there seems to be no
 `clang`/`dyld` options to specify a dependent shared library **install name**
 different that the one in the shared library linked.
+
+**LC_RPATH** and **@rpath**  are to different way to search for library. If a **dependent install
+name** start with **@rpath** is not replaced at load time with the value of **LC_RPATH**.
