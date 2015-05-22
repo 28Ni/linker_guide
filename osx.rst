@@ -1,19 +1,20 @@
 OSX
 ================
 
+Note: everything mentionned for loading an executable `main` is also valid for
+loading a library `libmain.dylib`.
+
 install name 
 ----------------------------------------
 
 When creating a library `libdep.dylib`, the **install name** of the library is
 embedded in binary file `libdep.dylib`.
 
-When linking an executable `main` (or a library `libmain.dylib`) with a
-library `libdep.dylib` it depends on, the **install name** of `libdep.dylib`
-is copied in the executable `main` (or library `libmain.dylib`).
+When linking an executable `main` with a library `libdep.dylib` it depends on,
+the **install name** of `libdep.dylib` is copied in the executable `main`.
 
-When loading an executable `main` (or a library `libmain.dylib`), the
-dependent library `libdep.dylib` is searched accoring to the **install name**
-embbedded in `main` (or `libmain.dylib`).
+When loading an executable `main`, the dependent library `libdep.dylib` is
+searched accoring to the **install name** embbedded in `main`.
 
 **install name** are used **only** at **link time**, while **install name** of
 dependant libraries are used **only** at **load time**.
@@ -150,7 +151,7 @@ Linking with a library:
 install name
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
  
-Setting the **install name** of a libary at its creation (by default, it is
+Set **install name** of a libary at its creation (by default, it is
 `lib<name>.dylib`:
 
 .. code-block:: bash
@@ -183,7 +184,7 @@ Change **dependant install name** of a dependent library:
  
 .. code-block:: bash
 
-     install_name_tool -change old/path/libdep.so new/path/libdep.so libmain.dylib
+     install_name_tool -change old/path/libdep.so new/path/libdep.so main
 
 rpath
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -194,13 +195,13 @@ Set the rpath list a executable or library creation:
 
     clang++ -o <executable or library> -Wl,-rpath,<path0>, -Wl,-rpath<path1> ... <sources
 
-Print the **LC_RPATH**:
+Print the **rpath list**:
  
 .. code-block:: bash
 
      otool -l <executable or library> # look at the section LC_RPATH
 
-Add **LC_RPATH** to executable or library:
+Add path to the **rpath list** of an executable or library:
 
 .. code-block:: bash
 
